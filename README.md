@@ -6,8 +6,18 @@ Notizen lesen, durchsuchen, anlegen, bearbeiten und löschen lässt.
 Die Anbindung läuft über JXA (JavaScript for Automation) direkt gegen
 `Notes.app` — keine Cloud, kein API-Key, keine Daten verlassen den Mac.
 
-> **Der Server muss auf deinem Mac laufen.** Apple Notes gibt es nur auf macOS;
-> in einer Linux-Umgebung (z. B. Claude Code im Web) meldet jedes Tool sauber
+## Welcher Weg passt zu dir?
+
+| Dein Gerät | Weg | Anleitung |
+| --- | --- | --- |
+| **Mac** | MCP-Server aus diesem Repo — Claude liest und schreibt selbstständig | weiter unten |
+| **Nur iPad / iPhone** | Kurzbefehle-Brücke über die Zwischenablage | **[docs/ipad-shortcuts.md](docs/ipad-shortcuts.md)** |
+
+> **Der MCP-Server braucht zwingend einen Mac.** iPadOS und iOS kennen kein
+> AppleScript/JXA und lassen keinen Prozess zu, der auf eine fremde App
+> zugreift. Auf dem iPad ist die Kurzbefehle-App die einzige Schnittstelle zu
+> Apple Notes — dafür kommt sie fast an den Funktionsumfang hier heran.
+> In einer Linux-Umgebung (z. B. Claude Code im Web) meldet jedes Tool sauber
 > `unsupported_platform`.
 
 ## Voraussetzungen
