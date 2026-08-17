@@ -1,0 +1,615 @@
+<title>Notizen-Relay</title>
+
+<style>
+  :root {
+    --bg: #f4f2ed;
+    --surface: #fffefb;
+    --surface-2: #eeebe3;
+    --ink: #1f1c15;
+    --ink-2: #4a443a;
+    --muted: #79715f;
+    --line: #ddd8cb;
+    --line-strong: #c6bfae;
+    --accent: #b06f14;
+    --accent-ink: #8a5608;
+    --accent-soft: #f6e7cd;
+    --cloud: #2f6257;
+    --cloud-soft: #dcebe6;
+    --pad: #8a4a2f;
+    --pad-soft: #f6e2d8;
+    --warn: #a3311b;
+    --warn-soft: #f7e0da;
+
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+    --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    --measure: 66ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16140f;
+      --surface: #201d16;
+      --surface-2: #2a261d;
+      --ink: #efe9dc;
+      --ink-2: #cdc5b4;
+      --muted: #9a917e;
+      --line: #35301f;
+      --line-strong: #4c4531;
+      --accent: #e6a444;
+      --accent-ink: #f0bb6e;
+      --accent-soft: #3a2f18;
+      --cloud: #7fc3b3;
+      --cloud-soft: #1e2f2b;
+      --pad: #d99a7c;
+      --pad-soft: #33221a;
+      --warn: #e89178;
+      --warn-soft: #3a201a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #16140f;
+    --surface: #201d16;
+    --surface-2: #2a261d;
+    --ink: #efe9dc;
+    --ink-2: #cdc5b4;
+    --muted: #9a917e;
+    --line: #35301f;
+    --line-strong: #4c4531;
+    --accent: #e6a444;
+    --accent-ink: #f0bb6e;
+    --accent-soft: #3a2f18;
+    --cloud: #7fc3b3;
+    --cloud-soft: #1e2f2b;
+    --pad: #d99a7c;
+    --pad-soft: #33221a;
+    --warn: #e89178;
+    --warn-soft: #3a201a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 22px 96px; }
+
+  p, li { color: var(--ink-2); }
+  p { max-width: var(--measure); }
+  a { color: var(--accent-ink); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+  header.hero { display: flex; flex-direction: column; gap: 18px; padding: 64px 0 30px; }
+
+  .eyebrow {
+    font-family: var(--rounded);
+    font-size: 12.5px; font-weight: 600; letter-spacing: 0.11em;
+    text-transform: uppercase; color: var(--accent-ink);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2.1rem, 6.4vw, 3.15rem);
+    line-height: 1.05; letter-spacing: -0.028em; font-weight: 700;
+    text-wrap: balance; color: var(--ink);
+  }
+
+  .lede { font-size: 1.18rem; line-height: 1.5; color: var(--ink-2); max-width: 58ch; margin: 0; }
+
+  .facts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fact {
+    font-family: var(--rounded); font-size: 13.5px; font-weight: 500;
+    padding: 5px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--line); color: var(--ink-2);
+  }
+
+  /* Schema */
+  .schema {
+    display: grid; gap: 10px; margin: 22px 0 0;
+    padding: 18px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 16px;
+  }
+  .schema-row { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; }
+  .pill {
+    font-size: 14.5px; font-weight: 550; color: var(--ink);
+    padding: 6px 12px; border-radius: 9px; background: var(--surface-2); white-space: nowrap;
+  }
+  .pill.cloud { background: var(--cloud-soft); color: var(--cloud); }
+  .pill.pad { background: var(--pad-soft); color: var(--pad); }
+  .pill.hub { background: var(--accent-soft); color: var(--accent-ink); font-weight: 650; }
+  .arrow { color: var(--muted); font-size: 15px; }
+  .schema-note { font-size: 14.5px; color: var(--muted); margin: 0; max-width: none; }
+
+  section { padding-top: 44px; }
+
+  h2 {
+    margin: 0 0 12px; font-size: 1.45rem; letter-spacing: -0.017em;
+    font-weight: 680; color: var(--ink); text-wrap: balance;
+  }
+  h3 { margin: 26px 0 8px; font-size: 1.02rem; font-weight: 650; color: var(--ink); }
+
+  /* Phasenkopf */
+  .phase {
+    display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap;
+    padding-bottom: 11px; border-bottom: 2px solid var(--accent); margin-bottom: 6px;
+  }
+  .phase-tag {
+    font-family: var(--rounded); font-size: 11.5px; font-weight: 700;
+    letter-spacing: 0.09em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 7px;
+  }
+  .phase-tag.cloud { background: var(--cloud-soft); color: var(--cloud); }
+  .phase-tag.pad { background: var(--pad-soft); color: var(--pad); }
+  .phase h2 { margin: 0; }
+
+  /* Schrittstapel */
+  ol.steps {
+    list-style: none; margin: 20px 0 0; padding: 0;
+    display: grid; gap: 11px; counter-reset: step;
+  }
+  ol.steps > li {
+    position: relative; counter-increment: step;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 13px; padding: 15px 17px 16px 50px;
+  }
+  ol.steps > li::before {
+    content: counter(step);
+    position: absolute; left: 15px; top: 15px;
+    width: 23px; height: 23px; border-radius: 7px;
+    background: var(--accent); color: var(--surface);
+    font-family: var(--rounded); font-size: 13px; font-weight: 700;
+    line-height: 23px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+  .step-title { font-weight: 650; color: var(--ink); display: block; margin-bottom: 3px; }
+  ol.steps ul { margin: 7px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+  ol.steps li li { font-size: 15.5px; }
+  ol.steps p { margin: 6px 0 0; font-size: 15.5px; }
+
+  .act { font-family: var(--mono); font-size: 14.5px; font-weight: 600; color: var(--ink); }
+  .en { font-size: 13px; color: var(--muted); font-style: italic; }
+
+  code {
+    font-family: var(--mono); font-size: 0.87em;
+    background: var(--accent-soft); color: var(--accent-ink);
+    padding: 1px 5px; border-radius: 5px;
+    overflow-wrap: anywhere;
+  }
+
+  pre {
+    margin: 9px 0 0; padding: 12px 14px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 9px;
+    overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
+    line-height: 1.55; color: var(--ink-2);
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+
+  /* Hinweise */
+  .note, .warn-box {
+    margin: 18px 0 0; padding: 15px 17px; border-radius: 12px;
+  }
+  .note {
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  .warn-box {
+    background: var(--warn-soft);
+    border: 1px solid color-mix(in srgb, var(--warn) 36%, transparent);
+  }
+  .note p, .warn-box p { margin: 0; color: var(--ink); max-width: none; }
+  .note p + p, .warn-box p + p { margin-top: 7px; }
+  .label {
+    display: block; font-family: var(--rounded); font-size: 11.5px;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .note .label { color: var(--accent-ink); }
+  .warn-box .label { color: var(--warn); }
+
+  ul.plain {
+    margin: 12px 0 0; padding-left: 19px; display: grid; gap: 8px; max-width: var(--measure);
+  }
+  ul.plain strong { color: var(--ink); font-weight: 620; }
+
+  .table-scroll { overflow-x: auto; margin-top: 14px; }
+  table { border-collapse: collapse; width: 100%; min-width: 460px; font-size: 15.5px; }
+  th, td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th {
+    font-family: var(--rounded); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted);
+  }
+  td { color: var(--ink-2); }
+  td:first-child { color: var(--ink); font-weight: 550; }
+
+  hr { border: 0; border-top: 1px solid var(--line); margin: 46px 0 0; }
+
+  footer { padding-top: 34px; color: var(--muted); font-size: 14.5px; }
+  footer p { color: var(--muted); max-width: none; }
+
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 16px 72px; }
+    header.hero { padding-top: 40px; }
+    ol.steps > li { padding: 14px 14px 15px 46px; }
+    ol.steps > li::before { left: 13px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">Cloudflare Worker · Kurzbefehle · Apple Notes</span>
+    <h1>Notizen-Relay</h1>
+    <p class="lede">
+      Claude liest und schreibt deine Apple Notes eigenständig — ohne Mac, ohne Kommandozeile.
+      Eingerichtet wird alles im Safari auf dem iPad.
+    </p>
+    <div class="facts">
+      <span class="fact">≈ 45 Min Einrichtung</span>
+      <span class="fact">Kostenlos im Free-Tier</span>
+      <span class="fact">Eine Datei zum Einfügen</span>
+    </div>
+
+    <div class="schema">
+      <div class="schema-row">
+        <span class="pill cloud">Claude</span>
+        <span class="arrow">— MCP →</span>
+        <span class="pill hub">Relay</span>
+        <span class="arrow">← HTTPS —</span>
+        <span class="pill pad">iPad-Kurzbefehl</span>
+        <span class="arrow">→</span>
+        <span class="pill pad">Apple Notes</span>
+      </div>
+      <p class="schema-note">
+        Claude erreicht dein iPad nicht — Connectors werden aus Anthropics Cloud aufgerufen.
+        iPadOS wiederum lässt keinen Serverprozess zu. Der Relay ist der Treffpunkt dazwischen.
+      </p>
+    </div>
+  </header>
+
+  <section id="prinzip">
+    <h2>Wie es arbeitet</h2>
+    <p>
+      <strong>Lesen</strong> beantwortet der Relay sofort aus dem letzten <em>Snapshot</em>, den dein
+      iPad hochgeladen hat. <strong>Schreiben</strong> legt er in eine <em>Warteschlange</em>, die
+      dein iPad beim nächsten Sync abarbeitet.
+    </p>
+    <p>
+      Daraus folgt die wichtigste Eigenschaft dieses Aufbaus: <strong>Claude sieht deine Notizen mit
+      dem Stand des letzten Syncs</strong>, nicht live. Neue Notizen entstehen mit Verzögerung.
+      Das Werkzeug <code>sync_status</code> sagt jederzeit, wie alt der Stand ist.
+    </p>
+  </section>
+
+  <hr>
+
+  <section id="relay">
+    <div class="phase">
+      <span class="phase-tag cloud">Teil 1</span>
+      <h2>Relay aufsetzen</h2>
+    </div>
+    <p>Im Safari auf dem iPad. Keine Kreditkarte, keine eigene Domain, kein Terminal.</p>
+
+    <ol class="steps">
+      <li>
+        <span class="step-title">Cloudflare-Konto anlegen</span>
+        <p><a href="https://dash.cloudflare.com">dash.cloudflare.com</a> öffnen und registrieren.</p>
+      </li>
+
+      <li>
+        <span class="step-title">Worker anlegen</span>
+        <ul>
+          <li><strong>Compute (Workers)</strong> → <strong>Create application</strong> → <strong>Start with Hello World!</strong></li>
+          <li>Namen vergeben, z.&nbsp;B. <code>notizen-relay</code> → <strong>Deploy</strong></li>
+          <li><strong>Edit code</strong> öffnen, alles löschen, den Inhalt von <code>relay/worker.js</code> einfügen → <strong>Deploy</strong></li>
+        </ul>
+        <p>Tipp: In GitHub bei <code>worker.js</code> auf <strong>Raw</strong> tippen, alles markieren, kopieren. Der Editor ist im Querformat deutlich handlicher.</p>
+      </li>
+
+      <li>
+        <span class="step-title">Speicher verbinden</span>
+        <ul>
+          <li><strong>Storage &amp; Databases</strong> → <strong>KV</strong> → <strong>Create instance</strong>, Name z.&nbsp;B. <code>notizen</code></li>
+          <li>Zurück zum Worker → <strong>Settings</strong> → <strong>Bindings</strong> → <strong>Add</strong> → <strong>KV namespace</strong></li>
+          <li><strong>Variable name:</strong> <code>NOTES</code> — genau so, der Worker sucht nach diesem Namen</li>
+          <li><strong>KV namespace:</strong> <code>notizen</code> → <strong>Deploy</strong></li>
+        </ul>
+      </li>
+
+      <li>
+        <span class="step-title">Setup-Code setzen</span>
+        <ul>
+          <li>Worker → <strong>Settings</strong> → <strong>Variables and Secrets</strong> → <strong>Add</strong></li>
+          <li>Typ <strong>Secret</strong>, Name <code>SETUP_CODE</code></li>
+          <li>Wert: etwas Langes und Zufälliges, z.&nbsp;B. <code>korb-lampe-tiger-47-blau</code> → <strong>Deploy</strong></li>
+        </ul>
+        <p>Notiere dir den Code — du brauchst ihn gleich zweimal. Er schützt sowohl Claudes Anmeldung als auch den Zugang deines iPads.</p>
+      </li>
+
+      <li>
+        <span class="step-title">Läuft es?</span>
+        <p>
+          <code>https://notizen-relay.&lt;dein-name&gt;.workers.dev/</code> im Safari aufrufen.
+          Es muss <strong>„Notizen-Relay läuft"</strong> erscheinen.
+        </p>
+        <ul>
+          <li>Hinweis auf <code>SETUP_CODE</code> → Schritt 4 fehlt</li>
+          <li>Fehler zu <code>NOTES</code> → Variablenname der KV-Bindung aus Schritt 3 stimmt nicht</li>
+        </ul>
+      </li>
+
+      <li>
+        <span class="step-title">Connector in Claude eintragen</span>
+        <ul>
+          <li>In Safari <a href="https://claude.ai">claude.ai</a> öffnen. Bei mobiler Ansicht: <strong>aA</strong> in der Adressleiste → <strong>Desktop-Website anfordern</strong></li>
+          <li><strong>Einstellungen</strong> → <strong>Connectors</strong> → <strong>Add custom connector</strong></li>
+          <li>URL: <code>https://notizen-relay.&lt;dein-name&gt;.workers.dev/mcp</code></li>
+          <li><strong>Connect</strong> → Formular erscheint → <strong>Setup-Code eingeben</strong> → <strong>Verbinden</strong></li>
+        </ul>
+        <p>Custom Connectors lassen sich nur auf claude.ai im Browser hinzufügen, nicht in der iPad-App. Danach synchronisiert Claude sie automatisch auf alle Geräte.</p>
+      </li>
+    </ol>
+  </section>
+
+  <hr>
+
+  <section id="shortcut">
+    <div class="phase">
+      <span class="phase-tag pad">Teil 2</span>
+      <h2>Sync-Kurzbefehl bauen</h2>
+    </div>
+    <p>
+      Ein einziger Kurzbefehl hält beide Richtungen am Laufen: Er holt Claudes Aufträge ab, führt
+      sie in Apple Notes aus, und lädt danach den aktuellen Stand hoch.
+    </p>
+    <p>
+      Lege zuerst in Apple Notes einen Ordner <strong>„Claude"</strong> an — dort landet alles, was
+      Claude neu anlegt. Dann in der Kurzbefehle-App auf <strong>+</strong> und den Kurzbefehl
+      <strong>„Claude-Sync"</strong> nennen.
+    </p>
+
+    <div class="note">
+      <span class="label">Zu den Aktionsnamen</span>
+      <p>
+        Die deutsche Kurzbefehle-App übersetzt Aktionsnamen, und die Bezeichnungen wechseln zwischen
+        iPadOS-Versionen. Unten steht jeweils <strong>deutsch</strong> und <em>englisch</em> — mit
+        dem englischen Namen findest du die Aktion notfalls über die Suche im Aktionen-Katalog.
+      </p>
+    </div>
+
+    <h3>Teil A — Claudes Aufträge holen</h3>
+
+    <ol class="steps">
+      <li>
+        <span class="act">Inhalte von URL abrufen</span> <span class="en">Get Contents of URL</span>
+        <ul>
+          <li>URL: <code>https://.../device/pull</code></li>
+          <li>Methode <strong>GET</strong></li>
+          <li>Header <code>X-Device-Token</code> → dein Setup-Code</li>
+        </ul>
+      </li>
+      <li>
+        <span class="act">Wörterbuchwert abrufen</span> <span class="en">Get Dictionary Value</span>
+        <ul><li>Schlüssel <code>creates</code>, aus dem Ergebnis von Schritt 1</li></ul>
+      </li>
+      <li>
+        <span class="act">Mit jedem Objekt wiederholen</span> <span class="en">Repeat with Each</span>
+        <ul>
+          <li>Eingabe: Ergebnis aus Schritt 2</li>
+          <li>darin <strong>Wörterbuchwert abrufen</strong> → Schlüssel <code>content</code></li>
+          <li>darin <strong>Notiz erstellen</strong> <span class="en">Create Note</span> → Inhalt ist <code>content</code>, <strong>Ordner: Claude</strong></li>
+        </ul>
+        <p>Der Relay liefert Titel und Text bereits zusammengesetzt, mit dem Titel als erster Zeile — genau daraus leitet Apple Notes den Notiznamen ab. Der Kurzbefehl muss hier nichts zusammenbauen.</p>
+      </li>
+      <li>
+        <span class="act">Wörterbuchwert abrufen</span> <span class="en">Get Dictionary Value</span>
+        <ul><li>Schlüssel <code>appends</code>, aus dem Ergebnis von <strong>Schritt 1</strong></li></ul>
+      </li>
+      <li>
+        <span class="act">Mit jedem Objekt wiederholen</span> <span class="en">Repeat with Each</span>
+        <ul>
+          <li>Eingabe: Ergebnis aus Schritt 4</li>
+          <li><strong>Wörterbuchwert abrufen</strong> → <code>title</code></li>
+          <li><strong>Notizen suchen</strong> <span class="en">Find Notes</span> → Filter <strong>Name enthält</strong> = <code>title</code>, Limit <strong>1</strong></li>
+          <li><strong>Wörterbuchwert abrufen</strong> → <code>text</code></li>
+          <li><strong>An Notiz anhängen</strong> <span class="en">Append to Note</span> → Notiz = Ergebnis von <em>Notizen suchen</em>, Text = <code>text</code></li>
+        </ul>
+      </li>
+    </ol>
+
+    <div class="note">
+      <span class="label">Die häufigste Stolperstelle</span>
+      <p>
+        <em>An Notiz anhängen</em> erwartet eine <strong>Notiz-Referenz</strong>, keinen Titel als
+        Text. Ohne vorheriges <em>Notizen suchen</em> findet die Aktion ihr Ziel nicht.
+      </p>
+    </div>
+
+    <h3>Teil B — Aktuellen Stand hochladen</h3>
+
+    <ol class="steps" style="counter-reset: step 5">
+      <li>
+        <span class="act">Notizen suchen</span> <span class="en">Find Notes</span>
+        <ul>
+          <li>Sortieren nach <strong>Zuletzt geändert</strong>, absteigend</li>
+          <li>Limit <strong>50</strong> zum Einstieg — später auf 100 erhöhen</li>
+        </ul>
+      </li>
+      <li>
+        <span class="act">Variable festlegen</span> <span class="en">Set Variable</span>
+        <ul><li>Name <code>Snapshot</code>, Wert leer lassen</li></ul>
+      </li>
+      <li>
+        <span class="act">Mit jedem Objekt wiederholen</span> <span class="en">Repeat with Each</span>
+        <p>
+          Darin eine <strong>Zu Variable hinzufügen</strong>-Aktion auf <code>Snapshot</code>, deren
+          Wert eine <strong>Text</strong>-Aktion mit genau diesem Aufbau ist:
+        </p>
+        <pre><code>###NOTE###
+F: ⟨Ordner⟩
+T: ⟨Name⟩
+M: ⟨Zuletzt geändert⟩
+B:
+⟨Text⟩</code></pre>
+        <p>
+          Die Marken <code>###NOTE###</code>, <code>F:</code>, <code>T:</code>, <code>M:</code> und
+          <code>B:</code> müssen exakt so stehen — der Relay zerlegt den Text daran.
+        </p>
+      </li>
+      <li>
+        <span class="act">Text kombinieren</span> <span class="en">Combine Text</span>
+        <ul><li>Eingabe <code>Snapshot</code>, Trennzeichen <strong>Neue Zeile</strong></li></ul>
+      </li>
+      <li>
+        <span class="act">Inhalte von URL abrufen</span> <span class="en">Get Contents of URL</span>
+        <ul>
+          <li>URL <code>https://.../device/push</code>, Methode <strong>POST</strong></li>
+          <li>Header <code>X-Device-Token</code> → dein Setup-Code</li>
+          <li><strong>Anfragetext: Datei</strong> <span class="en">Request Body: File</span> → Ergebnis aus Schritt 9</li>
+        </ul>
+        <p>Nicht „JSON" wählen — der Relay erwartet hier reinen Text.</p>
+      </li>
+      <li>
+        <span class="act">Mitteilung anzeigen</span> <span class="en">Show Notification</span>
+        <ul><li>Text: Ergebnis aus Schritt 10 — so siehst du sofort, was übertragen wurde</li></ul>
+      </li>
+    </ol>
+
+    <div class="note">
+      <span class="label">Magic Variables einsetzen</span>
+      <p>
+        Die Werte in ⟨spitzen Klammern⟩ tippst du nicht ab. Tippe auf die Variablenleiste über der
+        Tastatur und wähle das Wiederholungsobjekt.
+      </p>
+      <p>
+        Tippe die eingefügte Variable danach <strong>erneut an</strong> — dann lässt sich die
+        Eigenschaft umstellen auf <em>Ordner</em>, <em>Name</em>, <em>Zuletzt geändert</em> oder
+        <em>Text</em>.
+      </p>
+    </div>
+  </section>
+
+  <hr>
+
+  <section id="erster-lauf">
+    <h2>Erster Lauf</h2>
+    <p>
+      Kurzbefehl starten. Beim ersten Mal fragt iPadOS nach Erlaubnis für Notizen und für den
+      Netzwerkzugriff — beides erlauben. Die Mitteilung sollte so aussehen:
+    </p>
+    <pre><code>{"ok":true,"notes":50,"jobsCompleted":0}</code></pre>
+    <p>
+      Danach in Claude fragen: <em>„Wie ist der Sync-Status meiner Notizen?"</em> — Claude sollte
+      Zeitpunkt und Anzahl nennen.
+    </p>
+  </section>
+
+  <section id="automatisch">
+    <h2>Automatisch synchronisieren</h2>
+    <p>Damit du nicht daran denken musst — die nützlichste Variante zuerst:</p>
+
+    <h3>Beim Öffnen von Claude</h3>
+    <ul class="plain">
+      <li>Kurzbefehle → <strong>Automation</strong> → <strong>+</strong> → <strong>App</strong></li>
+      <li>App <strong>Claude</strong>, Auslöser <strong>Wird geöffnet</strong></li>
+      <li>Aktion <strong>Kurzbefehl ausführen</strong> → <code>Claude-Sync</code></li>
+      <li><strong>Sofort ausführen</strong> ein, <strong>Vor dem Ausführen fragen</strong> aus</li>
+    </ul>
+
+    <h3>Zusätzlich zeitgesteuert</h3>
+    <p>
+      Damit Claudes Aufträge auch ankommen, wenn du die App länger nicht öffnest: dieselbe
+      Automation mit Auslöser <strong>Tageszeit</strong>, z.&nbsp;B. stündlich zwischen 8 und 22 Uhr.
+    </p>
+    <p>
+      Für den Alltag: Wenn Claude sagt „ist eingereiht", genügt ein Start des Kurzbefehls, damit es
+      sofort passiert.
+    </p>
+  </section>
+
+  <section id="werkzeuge">
+    <h2>Werkzeuge, die Claude bekommt</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Werkzeug</th><th>Wirkung</th></tr></thead>
+        <tbody>
+          <tr><td>sync_status</td><td>Wie alt ist der Stand, wie viele Aufträge warten</td></tr>
+          <tr><td>notes_overview</td><td>Alle Ordner mit Notizanzahl</td></tr>
+          <tr><td>list_notes</td><td>Titel auflisten, optional nach Ordner</td></tr>
+          <tr><td>search_notes</td><td>Volltextsuche im Snapshot</td></tr>
+          <tr><td>read_note</td><td>Eine Notiz vollständig lesen</td></tr>
+          <tr><td>create_note</td><td>Neue Notiz einreihen — wirkt beim nächsten Sync</td></tr>
+          <tr><td>append_to_note</td><td>Text an bestehende Notiz einreihen</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="wenn-es-klemmt">
+    <h2>Wenn etwas klemmt</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Beobachtung</th><th>Ursache</th></tr></thead>
+        <tbody>
+          <tr><td>401 in der Mitteilung</td><td>Setup-Code im Header stimmt nicht mit dem Worker-Secret überein</td></tr>
+          <tr><td>„noch kein Snapshot"</td><td>Teil B lief nie durch — Schritt 10 prüfen</td></tr>
+          <tr><td>Notizen kommen leer an</td><td>In Schritt 8 fehlt die Eigenschaft <em>Text</em>; Variable erneut antippen und umstellen</td></tr>
+          <tr><td>Neue Notizen doppelt</td><td>Der Kurzbefehl lief zweimal ohne abgeschlossenen Teil B</td></tr>
+          <tr><td>Anhängen trifft die falsche Notiz</td><td><em>Notizen suchen</em> filtert auf <em>Name enthält</em> — Claude bitten, den vollen Titel zu nennen</td></tr>
+          <tr><td>Nichts passiert, keine Meldung</td><td>Netzwerkzugriff beim ersten Lauf verweigert — Einstellungen → Kurzbefehle</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="datenschutz">
+    <h2>Was du wissen solltest</h2>
+
+    <div class="warn-box">
+      <span class="label">Deine Notizinhalte liegen im Snapshot bei Cloudflare</span>
+      <p>
+        Das ist der Preis dieser Bauweise — anders kann Claude sie nicht lesen. Der Zugang hängt
+        vollständig am Setup-Code; behandle ihn wie ein Passwort.
+      </p>
+      <p>
+        Wenn dir das zu weit geht: In Teil&nbsp;B, Schritt&nbsp;8 die Zeile mit ⟨Text⟩ weglassen und
+        <code>B:</code> stehen lassen. Claude kann dann Titel und Ordner sehen, suchen und
+        schreiben — aber keine Inhalte lesen.
+      </p>
+    </div>
+
+    <h3>Bewusst weggelassen</h3>
+    <ul class="plain">
+      <li><strong>Löschen und Überschreiben.</strong> Ein zeitversetzter Auftrag trifft auf einen veralteten Stand und könnte die falsche Notiz erwischen. Anlegen und Anhängen sind darin harmlos.</li>
+      <li><strong>Live-Zugriff.</strong> Claude liest den Stand des letzten Syncs, nicht den aktuellen.</li>
+      <li><strong>Vollständigkeit.</strong> Der Snapshot umfasst die zuletzt geänderten Notizen — ältere erscheinen nicht.</li>
+    </ul>
+
+    <h3>Kosten</h3>
+    <p>
+      Cloudflares Free-Tier reicht: 100 000 Worker-Anfragen und 100 000 KV-Lesevorgänge pro Tag.
+      Ein persönlicher Notizabgleich liegt um Größenordnungen darunter.
+    </p>
+  </section>
+
+  <footer>
+    <p>
+      Repository: <code>zooker50000-lgtm/10-2-Sonntagsfrage</code> · Branch
+      <code>claude/apple-notes-connector-7t7e3e</code> · Worker unter <code>relay/worker.js</code>,
+      Textfassungen unter <code>relay/README.md</code> und <code>docs/ipad-relay-shortcut.md</code>
+    </p>
+  </footer>
+
+</div>
