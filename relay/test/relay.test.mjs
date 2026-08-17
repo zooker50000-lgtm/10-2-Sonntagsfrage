@@ -310,6 +310,50 @@ test("Snapshot vom iPad wird geparst und durchsuchbar", async () => {
   assert.doesNotMatch(listed.result.content[0].text, /Einkaufsliste/);
 });
 
+test("Kurzform ohne Schleife wird über den Index zusammengeführt", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  const pushed = await (
+    await pushSnapshot(
+      env,
+      `###INDEX###
+###F###
+Projekte
+Privat
+###T###
+Sonntagsfrage Auswertung
+Einkaufsliste
+###M###
+2026-08-17 10:00
+2026-08-16 18:30
+`,
+    )
+  ).json();
+  assert.equal(pushed.notes, 2);
+
+  const overview = await tool(env, accessToken, "notes_overview");
+  assert.match(overview.result.content[0].text, /Projekte: 1/);
+
+  const listed = await tool(env, accessToken, "list_notes", { folder: "Privat" });
+  assert.match(listed.result.content[0].text, /Einkaufsliste/);
+  assert.doesNotMatch(listed.result.content[0].text, /Sonntagsfrage/);
+
+  // Ohne Inhalte muss read_note erklären, warum nichts da ist.
+  const read = await tool(env, accessToken, "read_note", { title: "Einkaufsliste" });
+  assert.match(read.result.content[0].text, /nur als Titel/);
+});
+
+test("Kurzform verträgt ungleich lange Blöcke", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+  await pushSnapshot(env, `###INDEX###\n###F###\nA\n###T###\nEins\nZwei\n###M###\n\n`);
+
+  const listed = await tool(env, accessToken, "list_notes");
+  assert.match(listed.result.content[0].text, /Eins/);
+  assert.match(listed.result.content[0].text, /Zwei/);
+});
+
 test("Mehrdeutiger Titel wird zur Rückfrage statt zur Verwechslung", async () => {
   const env = makeEnv();
   const accessToken = await connect(env);

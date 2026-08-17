@@ -306,6 +306,42 @@ async function requireBearer(request, env, origin) {
  * mit Trennmarken dagegen ist eine einzige "Text kombinieren"-Aktion.
  */
 function parseSnapshot(raw) {
+  const text = String(raw);
+  return text.includes("###INDEX###") ? parseIndexSnapshot(text) : parseBlockSnapshot(text);
+}
+
+/**
+ * Kurzform ohne Notizinhalte, dafür ohne Schleife im Kurzbefehl.
+ *
+ * Fügt man in Kurzbefehlen eine Liste in eine Text-Aktion ein, rendert sie
+ * zeilenweise. Drei solche Einfügungen — Ordner, Titel, Änderungsdatum — liefern
+ * drei gleich lange Blöcke, die sich hier über den Index wieder zusammenführen
+ * lassen. Das spart auf dem iPad vier Aktionen und die gesamte
+ * Variablen-Verdrahtung, kostet aber die Notiztexte: die sind mehrzeilig und
+ * würden die Zeilenzuordnung zerstören.
+ */
+function parseIndexSnapshot(raw) {
+  const section = (name) => {
+    const match = raw.match(new RegExp(`###${name}###\\r?\\n([\\s\\S]*?)(?=\\r?\\n###|$)`));
+    if (!match) return [];
+    return match[1].split(/\r?\n/).map((line) => line.trim());
+  };
+
+  const folders = section("F");
+  const titles = section("T");
+  const modified = section("M");
+
+  return titles
+    .map((title, index) => ({
+      folder: folders[index] ?? "",
+      title,
+      modified: modified[index] ?? "",
+      text: "",
+    }))
+    .filter((note) => note.title);
+}
+
+function parseBlockSnapshot(raw) {
   const notes = [];
   for (const block of String(raw).split("###NOTE###")) {
     if (!block.trim()) continue;
