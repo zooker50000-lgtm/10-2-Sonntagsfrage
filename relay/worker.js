@@ -40,6 +40,8 @@ const KEY = {
   jobs: "jobs",
   inflight: "inflight",
   log: "log",
+  lastRaw: "lastraw",
+  version: "2026-08-17c",
   client: (id) => `oauth:client:${id}`,
   code: (code) => `oauth:code:${code}`,
   token: (token) => `oauth:token:${token}`,
@@ -516,8 +518,21 @@ async function callTool(env, name, args = {}) {
       const jobs = await readJson(env, KEY.jobs, []);
       const inflight = await readJson(env, KEY.inflight, null);
       const log = await readJson(env, KEY.log, []);
+      const lastRaw = await readJson(env, KEY.lastRaw, null);
+
+      const diagnose = lastRaw
+        ? [
+            "",
+            `Zuletzt empfangen (${lastRaw.bytes} Zeichen, ${lastRaw.at}):`,
+            "---",
+            lastRaw.preview || "(leer)",
+            "---",
+          ]
+        : [];
+
       return asText(
         [
+          `Relay-Version: ${KEY.version}`,
           snapshotAge(snapshot),
           `Notizen im Snapshot: ${snapshot.notes.length}${snapshot.truncated ? " (gekürzt)" : ""}`,
           `Wartende Aufträge: ${jobs.length}`,
@@ -525,6 +540,7 @@ async function callTool(env, name, args = {}) {
           "",
           "Letzte Ereignisse:",
           ...(log.length ? log.map((entry) => `  ${entry.at} — ${entry.message}`) : ["  (keine)"]),
+          ...diagnose,
         ].join("\n"),
       );
     }
@@ -754,6 +770,14 @@ async function handleDevicePush(request, env) {
 
   const raw = await request.text();
   const notes = parseSnapshot(raw);
+
+  // Diagnose: Liefert der Kurzbefehl 0 Notizen, ist ohne den Rohtext nicht zu
+  // unterscheiden, ob das iPad nichts geschickt hat oder das Format nicht passt.
+  await writeJson(env, KEY.lastRaw, {
+    at: new Date().toISOString(),
+    bytes: raw.length,
+    preview: raw.slice(0, 600),
+  });
   const inflight = await readJson(env, KEY.inflight, null);
   const done = inflight?.jobs?.length ?? 0;
 
