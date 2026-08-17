@@ -175,6 +175,35 @@ des Kurzbefehls, damit es sofort passiert.
 
 ---
 
+## Stolpersteine, die in der Praxis auftraten
+
+Diese Punkte stammen aus einer echten Einrichtung auf iPadOS und kosten sonst
+jeweils eine Viertelstunde:
+
+- **„Diese Aktion versucht, N Notizen-Objekte zu teilen. Dies ist nicht
+  erlaubt."** — iPadOS blockt Kurzbefehle, die viele Objekte auf einmal
+  verarbeiten. Abhilfe: Einstellungen → Apps → Kurzbefehle → Erweitert →
+  **„Große Datenmengen teilen erlauben"** einschalten. Bei fünf Notizen taucht
+  die Meldung nie auf, bei hundert sofort.
+- **Zwei fast gleich benannte Aktionen.** „Inhalte **der Webseite** von URL
+  abrufen" liest Webseitentext aus und hat keine Methode/Header. Gebraucht wird
+  „Inhalte von URL abrufen" (grünes Icon). Der Unterschied ist genau das Wort
+  „Webseite".
+- **Das Anfügen der Variablen ist reihenfolgeabhängig.** Wer erst alle Marken
+  tippt und danach die Variablen einfügt, bekommt beide Variablen am Ende
+  untereinander. Strikt von oben nach unten arbeiten: Marke, Variable, Marke,
+  Variable.
+- **Ein Änderungsdatum gibt es nicht.** Die Eigenschaften einer Notiz-Variable
+  sind Notiz, Name, Zusammenfassung, Text, Ordner, Angepinnt und Tags — kein
+  Datum. Der `###M###`-Abschnitt entfällt deshalb ersatzlos, der Relay kommt
+  ohne ihn zurecht.
+- **Die Variablenleiste erscheint nur bei Fokus im Textfeld.** Tippt man
+  zwischendurch woanders hin, fügt der Knopf nichts mehr ein. Der verlässlichere
+  Weg ist „Variable auswählen" ganz unten links.
+- **`sync_status` zeigt die Relay-Version und den Anfang des zuletzt
+  empfangenen Textes.** Wenn 0 Notizen ankommen, steht dort sofort, ob das iPad
+  nichts geschickt hat, das Format nicht passt oder der Worker veraltet ist.
+
 ## Wenn etwas klemmt
 
 | Beobachtung | Ursache |
