@@ -374,6 +374,7 @@ test("Schreiben landet in der Warteschlange und erreicht das iPad", async () => 
   const created = await tool(env, accessToken, "create_note", {
     title: "Wochenplan",
     text: "Montag: Auswertung",
+    folder: "Projekte",
   });
   assert.match(created.result.content[0].text, /nächsten Sync/);
 
@@ -405,7 +406,8 @@ test("Schreiben landet in der Warteschlange und erreicht das iPad", async () => 
 test("Ein abgebrochener Sync bekommt seine Aufträge später erneut", async () => {
   const env = makeEnv();
   const accessToken = await connect(env);
-  await tool(env, accessToken, "create_note", { title: "Verloren?", text: "nein" });
+  await pushSnapshot(env);
+  await tool(env, accessToken, "create_note", { title: "Verloren?", text: "nein", folder: "Projekte" });
 
   // Abholen, dann bricht der Kurzbefehl ab — es folgt kein Push.
   const first = await (
@@ -430,7 +432,11 @@ test("Vereinfachter Endpunkt liefert nur fertige Notiztexte", async () => {
   const accessToken = await connect(env);
   await pushSnapshot(env);
 
-  await tool(env, accessToken, "create_note", { title: "Wochenplan", text: "Montag: Auswertung" });
+  await tool(env, accessToken, "create_note", {
+    title: "Wochenplan",
+    text: "Montag: Auswertung",
+    folder: "Projekte",
+  });
   await tool(env, accessToken, "append_to_note", { title: "Einkaufsliste", text: "Butter" });
 
   const creates = await (

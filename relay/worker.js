@@ -41,7 +41,7 @@ const KEY = {
   inflight: "inflight",
   log: "log",
   lastRaw: "lastraw",
-  version: "2026-08-17d",
+  version: "2026-08-17e",
   client: (id) => `oauth:client:${id}`,
   code: (code) => `oauth:code:${code}`,
   token: (token) => `oauth:token:${token}`,
@@ -392,7 +392,7 @@ async function enqueue(env, job) {
  * die Merkliste überschreiben, denn nur sie holt einen abgebrochenen Sync
  * wieder ein.
  */
-async function pullJobs(env, op) {
+async function pullJobs(env, matches) {
   const inflight = await readJson(env, KEY.inflight, null);
   let queued = await readJson(env, KEY.jobs, []);
   let carried = inflight?.jobs ?? [];
@@ -406,11 +406,12 @@ async function pullJobs(env, op) {
     await appendLog(env, `${queued.length} unerledigte Aufträge erneut zugestellt.`);
   }
 
-  // Ohne `op` werden alle Aufträge geholt; mit `op` bleiben die übrigen in der
-  // Warteschlange liegen. So kann ein Kurzbefehl, der erst nur Notizen anlegen
-  // kann, die Anhänge-Aufträge unangetastet lassen, statt sie zu verschlucken.
-  const taken = op ? queued.filter((job) => job.op === op) : queued;
-  const remaining = op ? queued.filter((job) => job.op !== op) : [];
+  // Ohne Filter werden alle Aufträge geholt; mit Filter bleiben die übrigen in
+  // der Warteschlange liegen. So kann ein Kurzbefehl, der nur einen Teil
+  // ausführen kann — etwa nur Notizen eines bestimmten Ordners —, den Rest
+  // unangetastet lassen, statt ihn zu verschlucken.
+  const taken = matches ? queued.filter(matches) : queued;
+  const remaining = matches ? queued.filter((job) => !matches(job)) : [];
 
   await writeJson(env, KEY.jobs, remaining);
   await writeJson(env, KEY.inflight, {
@@ -480,14 +481,19 @@ const TOOLS = [
     name: "create_note",
     title: "Notiz anlegen",
     description:
-      "Reiht das Anlegen einer neuen Notiz ein. Sie entsteht erst beim nächsten Sync des iPads — das dem Nutzer gegenüber auch so sagen. Die erste Zeile wird von Apple Notes als Titel verwendet; Markdown wird nicht dargestellt, daher Klartext schreiben.",
+      "Reiht das Anlegen einer neuen Notiz ein. Sie entsteht erst beim nächsten Sync des iPads — das dem Nutzer gegenüber auch so sagen. Die erste Zeile wird von Apple Notes als Titel verwendet; Markdown wird nicht dargestellt, daher Klartext schreiben. Den Zielordner immer angeben und dafür einen Namen aus notes_overview verwenden.",
     inputSchema: {
       type: "object",
       properties: {
         title: { type: "string", description: "Titelzeile der Notiz." },
         text: { type: "string", description: "Inhalt als Klartext, ohne Markdown." },
+        folder: {
+          type: "string",
+          description:
+            "Zielordner, exakt wie in notes_overview geschrieben. Nur Ordner, die das iPad auch abholt, werden angelegt — im Zweifel beim Nutzer nachfragen.",
+        },
       },
-      required: ["title", "text"],
+      required: ["title", "text", "folder"],
     },
   },
   {
@@ -641,12 +647,25 @@ async function callTool(env, name, args = {}) {
     case "create_note": {
       const title = String(args.title ?? "").trim();
       const text = String(args.text ?? "");
+      const folder = String(args.folder ?? "").trim();
       if (!title) return asError("Es wurde kein Titel übergeben.");
+      if (!folder) return asError("Es wurde kein Zielordner übergeben. Ordnernamen liefert notes_overview.");
 
-      await enqueue(env, { op: "create", title, text });
-      await appendLog(env, `Notiz "${title}" eingereiht.`);
+      // Ein Ordner, den der Snapshot nicht kennt, wird auf dem iPad von keinem
+      // Block abgeholt — die Notiz bliebe unbemerkt liegen.
+      const known = snapshot.notes.some(
+        (note) => (note.folder || "").toLowerCase() === folder.toLowerCase(),
+      );
+      if (snapshot.syncedAt && !known) {
+        return asError(
+          `Der Ordner "${folder}" kommt im letzten Snapshot nicht vor. Mit notes_overview die vorhandenen Ordner prüfen und einen davon verwenden.`,
+        );
+      }
+
+      await enqueue(env, { op: "create", title, text, folder });
+      await appendLog(env, `Notiz "${title}" für Ordner "${folder}" eingereiht.`);
       return asText(
-        `„${title}“ ist eingereiht und wird beim nächsten Sync des iPads angelegt. Bis dahin existiert die Notiz noch nicht.`,
+        `„${title}“ ist für den Ordner „${folder}“ eingereiht und wird beim nächsten Sync des iPads angelegt. Bis dahin existiert die Notiz noch nicht.`,
       );
     }
 
@@ -784,7 +803,17 @@ async function handleDevicePull(request, env) {
 async function handleDeviceCreates(request, env) {
   if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
 
-  const jobs = await pullJobs(env, "create");
+  // Der Ordner muss über die Adresse eingegrenzt werden können, weil
+  // Kurzbefehle das Zielverzeichnis von "Notiz erstellen" fest verdrahtet.
+  // Ein Block je Ordner holt sich so genau seine Notizen ab.
+  const wanted = new URL(request.url).searchParams.get("folder");
+  const jobs = await pullJobs(
+    env,
+    (job) =>
+      job.op === "create" &&
+      (!wanted || (job.folder ?? "").toLowerCase() === wanted.toLowerCase()),
+  );
+
   return json(jobs.map((job) => `${job.title}\n\n${job.text}`.trim()));
 }
 
