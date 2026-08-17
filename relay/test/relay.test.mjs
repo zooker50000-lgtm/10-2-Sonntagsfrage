@@ -354,6 +354,85 @@ test("Kurzform verträgt ungleich lange Blöcke", async () => {
   assert.match(listed.result.content[0].text, /Zwei/);
 });
 
+test("Inhalte werden nachgereicht und dem Index zugeordnet", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  await pushSnapshot(
+    env,
+    `###INDEX###\n###F###\nChemie\nGeografie\n###T###\nSäuren und Basen\nPlattentektonik\n`,
+  );
+
+  const bodies = await (
+    await call(env, "/device/bodies", {
+      method: "POST",
+      headers: { "X-Device-Token": SETUP_CODE },
+      body:
+        "Säuren und Basen\npH-Wert unter 7 ist sauer.\nIndikatoren zeigen das an." +
+        "@@@NOTIZ@@@" +
+        "Plattentektonik\nDie Erdkruste besteht aus Platten.",
+    })
+  ).json();
+
+  assert.equal(bodies.ok, true);
+  assert.equal(bodies.withText, 2);
+  assert.equal(bodies.warnung, undefined);
+
+  const read = await tool(env, accessToken, "read_note", { title: "Säuren" });
+  assert.match(read.result.content[0].text, /pH-Wert unter 7/);
+
+  // Jetzt trägt die Volltextsuche wirklich, nicht nur die Titelsuche.
+  const found = await tool(env, accessToken, "search_notes", { query: "Erdkruste" });
+  assert.match(found.result.content[0].text, /Plattentektonik/);
+});
+
+test("Verrutschte Zuordnung der Inhalte wird gemeldet", async () => {
+  const env = makeEnv();
+  await connect(env);
+  await pushSnapshot(env, `###INDEX###\n###F###\nA\nB\n###T###\nEins\nZwei\n`);
+
+  const result = await (
+    await call(env, "/device/bodies", {
+      method: "POST",
+      headers: { "X-Device-Token": SETUP_CODE },
+      body: "nur ein Text",
+    })
+  ).json();
+
+  assert.match(result.warnung, /verrutscht/);
+});
+
+test("Inhalte ohne Index werden abgelehnt statt still verworfen", async () => {
+  const env = makeEnv();
+  const response = await call(env, "/device/bodies", {
+    method: "POST",
+    headers: { "X-Device-Token": SETUP_CODE },
+    body: "irgendwas",
+  });
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).error, "kein_index");
+});
+
+test("Eine Notiz ohne Titel verschiebt die Zuordnung nicht", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  // Mittlere Notiz ohne Titel — früher fiel sie raus und alles danach verrutschte.
+  await pushSnapshot(env, `###INDEX###\n###F###\nA\nA\nA\n###T###\nEins\n\nDrei\n`);
+
+  const listed = await tool(env, accessToken, "list_notes");
+  assert.match(listed.result.content[0].text, /\(ohne Titel\)/);
+
+  await call(env, "/device/bodies", {
+    method: "POST",
+    headers: { "X-Device-Token": SETUP_CODE },
+    body: ["Text eins", "Text zwei", "Text drei"].join("@@@NOTIZ@@@"),
+  });
+
+  const read = await tool(env, accessToken, "read_note", { title: "Drei" });
+  assert.match(read.result.content[0].text, /Text drei/);
+});
+
 test("Mehrdeutiger Titel wird zur Rückfrage statt zur Verwechslung", async () => {
   const env = makeEnv();
   const accessToken = await connect(env);

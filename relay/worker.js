@@ -41,7 +41,7 @@ const KEY = {
   inflight: "inflight",
   log: "log",
   lastRaw: "lastraw",
-  version: "2026-08-17e",
+  version: "2026-08-17f",
   client: (id) => `oauth:client:${id}`,
   code: (code) => `oauth:code:${code}`,
   token: (token) => `oauth:token:${token}`,
@@ -326,21 +326,27 @@ function parseIndexSnapshot(raw) {
   const section = (name) => {
     const match = raw.match(new RegExp(`###${name}###\\r?\\n([\\s\\S]*?)(?=\\r?\\n###|$)`));
     if (!match) return [];
-    return match[1].split(/\r?\n/).map((line) => line.trim());
+    const lines = match[1].split(/\r?\n/).map((line) => line.trim());
+    // Nur am Ende kürzen: eine leere Zeile mittendrin gehört zu einer Notiz
+    // ohne Titel, und die Zeilennummer ist hier die einzige Verbindung
+    // zwischen Ordner, Titel und später dem Inhalt.
+    while (lines.length && lines[lines.length - 1] === "") lines.pop();
+    return lines;
   };
 
   const folders = section("F");
   const titles = section("T");
   const modified = section("M");
+  const count = Math.max(folders.length, titles.length);
 
-  return titles
-    .map((title, index) => ({
-      folder: folders[index] ?? "",
-      title,
-      modified: modified[index] ?? "",
-      text: "",
-    }))
-    .filter((note) => note.title);
+  const notes = [];
+  for (let index = 0; index < count; index++) {
+    const folder = folders[index] ?? "";
+    const title = titles[index] ?? "";
+    if (!folder && !title) continue;
+    notes.push({ folder, title: title || "(ohne Titel)", modified: modified[index] ?? "", text: "" });
+  }
+  return notes;
 }
 
 function parseBlockSnapshot(raw) {
@@ -817,6 +823,57 @@ async function handleDeviceCreates(request, env) {
   return json(jobs.map((job) => `${job.title}\n\n${job.text}`.trim()));
 }
 
+/** Trennmarke zwischen zwei Notiztexten. Absichtlich so, dass sie in echten Notizen nicht vorkommt. */
+const BODY_SEPARATOR = "@@@NOTIZ@@@";
+
+/**
+ * Nimmt die Notiztexte als einen Block entgegen und hängt sie an den zuletzt
+ * hochgeladenen Index.
+ *
+ * Warum getrennt vom Index: Notiztexte sind mehrzeilig, taugen also nicht für
+ * die zeilenweise Zuordnung. Mit einer eigenen Trennmarke lassen sie sich in
+ * einer einzigen "Text kombinieren"-Aktion zusammenfassen — der Kurzbefehl
+ * braucht dafür weder Schleife noch Variablen-Verdrahtung. Und als eigener
+ * Aufruf lässt sich der Schritt hinten anhängen, statt ihn zwischen bestehende
+ * Aktionen einsortieren zu müssen.
+ */
+async function handleDeviceBodies(request, env) {
+  if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
+
+  const raw = await request.text();
+  const parts = raw.split(BODY_SEPARATOR);
+  const snapshot = await readJson(env, KEY.snapshot, emptySnapshot());
+
+  if (!snapshot.notes.length) {
+    return json(
+      { ok: false, error: "kein_index", message: "Zuerst den Index an /device/push senden." },
+      409,
+    );
+  }
+
+  let filled = 0;
+  snapshot.notes.forEach((note, index) => {
+    const text = (parts[index] ?? "").trim();
+    note.text = text;
+    if (text) filled++;
+  });
+
+  await writeJson(env, KEY.snapshot, snapshot);
+  await appendLog(env, `Inhalte empfangen: ${filled} von ${snapshot.notes.length} Notizen.`);
+
+  const mismatch = parts.length !== snapshot.notes.length;
+  return json({
+    ok: true,
+    notes: snapshot.notes.length,
+    withText: filled,
+    ...(mismatch
+      ? {
+          warnung: `Es kamen ${parts.length} Texte für ${snapshot.notes.length} Notizen an — die Zuordnung könnte verrutscht sein. Beide Schritte müssen dieselbe "Notiz suchen"-Aktion verwenden.`,
+        }
+      : {}),
+  });
+}
+
 async function handleDevicePush(request, env) {
   if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
 
@@ -908,6 +965,11 @@ export default {
 
       case "/device/creates":
         return handleDeviceCreates(request, env);
+
+      case "/device/bodies":
+        return request.method === "POST"
+          ? handleDeviceBodies(request, env)
+          : new Response("Method Not Allowed", { status: 405 });
 
       case "/device/push":
         return request.method === "POST"
