@@ -41,7 +41,7 @@ const KEY = {
   inflight: "inflight",
   log: "log",
   lastRaw: "lastraw",
-  version: "2026-08-17c",
+  version: "2026-08-17d",
   client: (id) => `oauth:client:${id}`,
   code: (code) => `oauth:code:${code}`,
   token: (token) => `oauth:token:${token}`,
@@ -392,7 +392,7 @@ async function enqueue(env, job) {
  * die Merkliste überschreiben, denn nur sie holt einen abgebrochenen Sync
  * wieder ein.
  */
-async function pullJobs(env) {
+async function pullJobs(env, op) {
   const inflight = await readJson(env, KEY.inflight, null);
   let queued = await readJson(env, KEY.jobs, []);
   let carried = inflight?.jobs ?? [];
@@ -406,12 +406,18 @@ async function pullJobs(env) {
     await appendLog(env, `${queued.length} unerledigte Aufträge erneut zugestellt.`);
   }
 
-  await writeJson(env, KEY.jobs, []);
+  // Ohne `op` werden alle Aufträge geholt; mit `op` bleiben die übrigen in der
+  // Warteschlange liegen. So kann ein Kurzbefehl, der erst nur Notizen anlegen
+  // kann, die Anhänge-Aufträge unangetastet lassen, statt sie zu verschlucken.
+  const taken = op ? queued.filter((job) => job.op === op) : queued;
+  const remaining = op ? queued.filter((job) => job.op !== op) : [];
+
+  await writeJson(env, KEY.jobs, remaining);
   await writeJson(env, KEY.inflight, {
     at: since ?? new Date().toISOString(),
-    jobs: [...carried, ...queued],
+    jobs: [...carried, ...taken],
   });
-  return queued;
+  return taken;
 }
 
 // ---------------------------------------------------------------------------
@@ -765,6 +771,23 @@ async function handleDevicePull(request, env) {
   });
 }
 
+/**
+ * Nur die anzulegenden Notizen, als blanke JSON-Liste fertiger Texte.
+ *
+ * Eine Liste von Zeichenketten statt eines Objekts mit verschachtelten Feldern
+ * spart im Kurzbefehl zwei Aktionen: „Inhalte von URL abrufen" liefert die
+ * Liste direkt an „Mit jedem Objekt wiederholen", und das Wiederholungsobjekt
+ * ist bereits der fertige Notiztext. Kein Wörterbuchwert, keine Verzweigung.
+ * Anhänge-Aufträge bleiben in der Warteschlange, bis der Kurzbefehl auch sie
+ * abarbeiten kann.
+ */
+async function handleDeviceCreates(request, env) {
+  if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
+
+  const jobs = await pullJobs(env, "create");
+  return json(jobs.map((job) => `${job.title}\n\n${job.text}`.trim()));
+}
+
 async function handleDevicePush(request, env) {
   if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
 
@@ -853,6 +876,9 @@ export default {
 
       case "/device/pull":
         return handleDevicePull(request, env);
+
+      case "/device/creates":
+        return handleDeviceCreates(request, env);
 
       case "/device/push":
         return request.method === "POST"

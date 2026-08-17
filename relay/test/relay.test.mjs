@@ -425,6 +425,31 @@ test("Ein abgebrochener Sync bekommt seine Aufträge später erneut", async () =
   assert.match(retry.creates[0].content, /^Verloren\?/);
 });
 
+test("Vereinfachter Endpunkt liefert nur fertige Notiztexte", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+  await pushSnapshot(env);
+
+  await tool(env, accessToken, "create_note", { title: "Wochenplan", text: "Montag: Auswertung" });
+  await tool(env, accessToken, "append_to_note", { title: "Einkaufsliste", text: "Butter" });
+
+  const creates = await (
+    await call(env, "/device/creates", { headers: { "X-Device-Token": SETUP_CODE } })
+  ).json();
+
+  // Blanke Liste fertiger Texte — kein Objekt, keine Verschachtelung.
+  assert.deepEqual(creates, ["Wochenplan\n\nMontag: Auswertung"]);
+
+  // Der Anhänge-Auftrag darf dabei nicht verloren gehen.
+  const status = await tool(env, accessToken, "sync_status");
+  assert.match(status.result.content[0].text, /Wartende Aufträge: 1/);
+
+  const pending = await (
+    await call(env, "/device/pull", { headers: { "X-Device-Token": SETUP_CODE } })
+  ).json();
+  assert.deepEqual(pending.appends, [{ title: "Einkaufsliste", text: "Butter" }]);
+});
+
 test("Geräte-Endpunkte weisen einen falschen Token ab", async () => {
   const env = makeEnv();
   const pull = await call(env, "/device/pull", { headers: { "X-Device-Token": "falsch" } });
