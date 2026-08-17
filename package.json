@@ -1,0 +1,33 @@
+{
+  "name": "apple-notes-mcp",
+  "version": "0.1.0",
+  "description": "MCP-Server als Connector zwischen Claude und Apple Notes (macOS)",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "apple-notes-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc && node scripts/copy-assets.mjs",
+    "start": "node dist/index.js",
+    "test": "npm run build && node --test \"test/*.test.mjs\"",
+    "doctor": "node scripts/doctor.mjs",
+    "typecheck": "tsc --noEmit",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
