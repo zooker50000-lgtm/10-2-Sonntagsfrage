@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsc && node scripts/copy-assets.mjs",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test \"test/*.test.mjs\"",
+    "test": "npm run build && node --test \"test/*.test.mjs\" \"relay/test/*.test.mjs\"",
     "doctor": "node scripts/doctor.mjs",
     "typecheck": "tsc --noEmit",
     "prepare": "npm run build"

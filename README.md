@@ -11,7 +11,8 @@ Die Anbindung läuft über JXA (JavaScript for Automation) direkt gegen
 | Dein Gerät | Weg | Anleitung |
 | --- | --- | --- |
 | **Mac** | MCP-Server aus diesem Repo — Claude liest und schreibt selbstständig | weiter unten |
-| **Nur iPad / iPhone** | Kurzbefehle-Brücke über die Zwischenablage | **[docs/ipad-shortcuts.md](docs/ipad-shortcuts.md)** |
+| **Nur iPad / iPhone** | **Relay** — Claude liest und schreibt selbstständig, Abgleich per Sync-Kurzbefehl | **[relay/README.md](relay/README.md)** |
+| **iPad, ohne Hosting** | Kurzbefehle über die Zwischenablage — du kopierst selbst | [docs/ipad-shortcuts.md](docs/ipad-shortcuts.md) |
 
 > **Der MCP-Server braucht zwingend einen Mac.** iPadOS und iOS kennen kein
 > AppleScript/JXA und lassen keinen Prozess zu, der auf eine fremde App
