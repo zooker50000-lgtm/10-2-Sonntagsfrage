@@ -641,3 +641,21 @@ test("PDFs überleben einen neuen Notiz-Sync", async () => {
   const read = await tool(env, accessToken, "read_note", { title: "Merkblatt" });
   assert.match(read.result.content[0].text, /Klassenarbeit/);
 });
+
+test("Ohne Dateinamen dient die erste Textzeile als Titel", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  const stored = await (
+    await call(env, "/device/pdf", {
+      method: "POST",
+      headers: { "X-Device-Token": SETUP_CODE },
+      body: "Klassenarbeit Chemie 12/1\n\nAufgabe 1: Titration von Essigsäure.",
+    })
+  ).json();
+
+  assert.equal(stored.dokument, "Klassenarbeit Chemie 12/1");
+
+  const read = await tool(env, accessToken, "read_note", { title: "Klassenarbeit Chemie" });
+  assert.match(read.result.content[0].text, /Titration/);
+});

@@ -42,7 +42,7 @@ const KEY = {
   log: "log",
   lastRaw: "lastraw",
   docs: "docs",
-  version: "2026-08-18a",
+  version: "2026-08-18b",
   client: (id) => `oauth:client:${id}`,
   code: (code) => `oauth:code:${code}`,
   token: (token) => `oauth:token:${token}`,
@@ -903,10 +903,16 @@ async function handleDeviceBodies(request, env) {
 async function handleDevicePdf(request, env) {
   if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
 
-  const name = (new URL(request.url).searchParams.get("name") || "").trim();
   const text = (await request.text()).trim();
 
-  if (!name) return json({ ok: false, message: "Es fehlt der Dateiname (?name=…)." }, 400);
+  // Der Dateiname ist optional: ihn im Kurzbefehl in die Adresse zu bekommen
+  // hieße, eine Variable in ein URL-Feld zu setzen und mit Leerzeichen und
+  // Umlauten zu kämpfen. Ohne Namen dient die erste Textzeile als Titel — bei
+  // Arbeitsblättern und Skripten ist das die Überschrift.
+  const given = (new URL(request.url).searchParams.get("name") || "").trim();
+  const firstLine = text.split(/\r?\n/).find((line) => line.trim());
+  const name = given || (firstLine ? firstLine.trim().slice(0, 80) : "Dokument");
+
   if (!text) {
     return json(
       {
