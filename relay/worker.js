@@ -42,7 +42,7 @@ const KEY = {
   log: "log",
   lastRaw: "lastraw",
   docs: "docs",
-  version: "2026-08-18b",
+  version: "2026-08-18c",
   client: (id) => `oauth:client:${id}`,
   code: (code) => `oauth:code:${code}`,
   token: (token) => `oauth:token:${token}`,
@@ -937,6 +937,52 @@ async function handleDevicePdf(request, env) {
   return json({ ok: true, dokument: name, zeichen: text.length, dokumenteGesamt: docs.length });
 }
 
+/** Trennmarke zwischen zwei PDF-Texten im Sammel-Upload. */
+const PDF_SEPARATOR = "@@@PDF@@@";
+
+/**
+ * Nimmt die Texte eines ganzen PDF-Ordners in einem Aufruf entgegen und ersetzt
+ * damit den Dokumentenbestand.
+ *
+ * Kein Dateiname nötig: jeder Abschnitt wird über seine erste Textzeile
+ * benannt. Das erspart im Kurzbefehl einen zweiten Block mit den Namen und
+ * damit die Zuordnung über Zeilennummern — der Titel steht ohnehin oben im
+ * Dokument.
+ *
+ * Ersetzen statt Ergänzen, weil ein Ordner-Scan den vollständigen Stand
+ * abbildet: gelöschte PDFs sollen auch hier verschwinden.
+ */
+async function handleDevicePdfs(request, env) {
+  if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
+
+  const raw = await request.text();
+  const now = new Date().toISOString();
+
+  const docs = raw
+    .split(PDF_SEPARATOR)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((text) => {
+      const firstLine = text.split(/\r?\n/).find((line) => line.trim());
+      return { title: firstLine ? firstLine.trim().slice(0, 80) : "Dokument", text, addedAt: now };
+    });
+
+  await writeJson(env, KEY.docs, docs);
+  await appendLog(env, `PDF-Ordner übernommen: ${docs.length} Dokumente.`);
+
+  return json({
+    ok: true,
+    dokumente: docs.length,
+    titel: docs.slice(0, 10).map((doc) => doc.title),
+    ...(docs.length === 1 && raw.length > 20000
+      ? {
+          hinweis:
+            "Es kam nur ein einziges, sehr langes Dokument an. Vermutlich hat „Text abrufen“ alle PDFs zusammengefasst, statt eine Liste zu liefern — dann fehlt die Trennung zwischen den Dateien.",
+        }
+      : {}),
+  });
+}
+
 async function handleDevicePush(request, env) {
   if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
 
@@ -1028,6 +1074,11 @@ export default {
 
       case "/device/creates":
         return handleDeviceCreates(request, env);
+
+      case "/device/pdfs":
+        return request.method === "POST"
+          ? handleDevicePdfs(request, env)
+          : new Response("Method Not Allowed", { status: 405 });
 
       case "/device/pdf":
         return request.method === "POST"

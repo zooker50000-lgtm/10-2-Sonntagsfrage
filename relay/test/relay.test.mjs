@@ -659,3 +659,46 @@ test("Ohne Dateinamen dient die erste Textzeile als Titel", async () => {
   const read = await tool(env, accessToken, "read_note", { title: "Klassenarbeit Chemie" });
   assert.match(read.result.content[0].text, /Titration/);
 });
+
+test("Ein ganzer PDF-Ordner wird in einem Aufruf übernommen", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  const result = await (
+    await call(env, "/device/pdfs", {
+      method: "POST",
+      headers: { "X-Device-Token": SETUP_CODE },
+      body: [
+        "Arbeitsblatt Titration\nBerechne den Äquivalenzpunkt.",
+        "Erdkunde Klausur\nPlattengrenzen und Vulkanismus.",
+      ].join("@@@PDF@@@"),
+    })
+  ).json();
+
+  assert.equal(result.dokumente, 2);
+  assert.deepEqual(result.titel, ["Arbeitsblatt Titration", "Erdkunde Klausur"]);
+
+  const found = await tool(env, accessToken, "search_notes", { query: "Vulkanismus" });
+  assert.match(found.result.content[0].text, /Erdkunde Klausur/);
+});
+
+test("Ein gelöschtes PDF verschwindet beim nächsten Ordner-Scan", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  const scan = (body) =>
+    call(env, "/device/pdfs", {
+      method: "POST",
+      headers: { "X-Device-Token": SETUP_CODE },
+      body,
+    });
+
+  await scan(["Alt\nalter Inhalt", "Bleibt\nbleibender Inhalt"].join("@@@PDF@@@"));
+  await scan("Bleibt\nbleibender Inhalt");
+
+  const gone = await tool(env, accessToken, "read_note", { title: "Alt" });
+  assert.equal(gone.result.isError, true);
+
+  const still = await tool(env, accessToken, "read_note", { title: "Bleibt" });
+  assert.match(still.result.content[0].text, /bleibender Inhalt/);
+});
