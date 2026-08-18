@@ -41,7 +41,8 @@ const KEY = {
   inflight: "inflight",
   log: "log",
   lastRaw: "lastraw",
-  version: "2026-08-17f",
+  docs: "docs",
+  version: "2026-08-18a",
   client: (id) => `oauth:client:${id}`,
   code: (code) => `oauth:code:${code}`,
   token: (token) => `oauth:token:${token}`,
@@ -523,11 +524,25 @@ const asError = (body) => ({ content: [{ type: "text", text: body }], isError: t
 
 async function callTool(env, name, args = {}) {
   const snapshot = await readJson(env, KEY.snapshot, emptySnapshot());
+  const docs = await readJson(env, KEY.docs, []);
+
+  // Geteilte PDFs erscheinen für alle lesenden Werkzeuge als Notizen im Ordner
+  // "PDF". So braucht es keine eigenen Werkzeuge dafür, und Claude kann Notizen
+  // und Unterlagen in einem Zug durchsuchen.
+  const entries = [
+    ...snapshot.notes,
+    ...docs.map((doc) => ({
+      folder: "PDF",
+      title: doc.title,
+      modified: doc.addedAt,
+      text: doc.text,
+    })),
+  ];
 
   const needSnapshot = () =>
-    !snapshot.syncedAt
+    !entries.length
       ? asError(
-          "Es liegt noch kein Snapshot vor. Auf dem iPad einmal den Kurzbefehl „Claude-Sync“ ausführen — danach sind die Notizen hier lesbar.",
+          "Es liegt noch nichts vor. Auf dem iPad einmal den Kurzbefehl „Claude-Sync“ ausführen — danach sind die Notizen hier lesbar.",
         )
       : null;
 
@@ -553,6 +568,7 @@ async function callTool(env, name, args = {}) {
           `Relay-Version: ${KEY.version}`,
           snapshotAge(snapshot),
           `Notizen im Snapshot: ${snapshot.notes.length}${snapshot.truncated ? " (gekürzt)" : ""}`,
+          `Geteilte PDFs: ${docs.length}`,
           `Wartende Aufträge: ${jobs.length}`,
           `In Bearbeitung: ${inflight?.jobs?.length ?? 0}`,
           "",
@@ -568,7 +584,7 @@ async function callTool(env, name, args = {}) {
       if (missing) return missing;
 
       const counts = new Map();
-      for (const note of snapshot.notes) {
+      for (const note of entries) {
         const folder = note.folder || "(ohne Ordner)";
         counts.set(folder, (counts.get(folder) ?? 0) + 1);
       }
@@ -584,7 +600,7 @@ async function callTool(env, name, args = {}) {
 
       const limit = args.limit ?? 50;
       const wanted = args.folder?.toLowerCase();
-      const rows = snapshot.notes
+      const rows = entries
         .filter((note) => !wanted || (note.folder || "").toLowerCase() === wanted)
         .slice(0, limit)
         .map((note) => `  ${note.folder || "-"} | ${note.title}`);
@@ -602,7 +618,7 @@ async function callTool(env, name, args = {}) {
       const needle = String(args.query ?? "").toLowerCase();
       if (!needle) return asError("Es wurde kein Suchbegriff übergeben.");
 
-      const hits = snapshot.notes
+      const hits = entries
         .filter(
           (note) =>
             note.title.toLowerCase().includes(needle) || note.text.toLowerCase().includes(needle),
@@ -627,7 +643,7 @@ async function callTool(env, name, args = {}) {
       if (missing) return missing;
 
       const wanted = String(args.title ?? "").toLowerCase();
-      const matches = snapshot.notes.filter((note) => note.title.toLowerCase().includes(wanted));
+      const matches = entries.filter((note) => note.title.toLowerCase().includes(wanted));
 
       if (!matches.length) return asError(`Keine Notiz mit "${args.title}" im Titel. ${snapshotAge(snapshot)}`);
       if (matches.length > 1) {
@@ -874,6 +890,47 @@ async function handleDeviceBodies(request, env) {
   });
 }
 
+/**
+ * Nimmt den Text eines einzelnen PDFs entgegen, das per Teilen-Menü geschickt
+ * wurde.
+ *
+ * Absichtlich ein Dokument pro Aufruf statt eines Ordner-Scans: der
+ * Kurzbefehl braucht so weder Schleife noch Liste noch Zuordnung über
+ * Zeilennummern — die drei Dinge, an denen der Aufbau auf dem iPad jedes Mal
+ * hakt. Dokumente liegen getrennt vom Notiz-Snapshot, weil der bei jedem Sync
+ * komplett überschrieben wird und die PDFs das überleben müssen.
+ */
+async function handleDevicePdf(request, env) {
+  if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
+
+  const name = (new URL(request.url).searchParams.get("name") || "").trim();
+  const text = (await request.text()).trim();
+
+  if (!name) return json({ ok: false, message: "Es fehlt der Dateiname (?name=…)." }, 400);
+  if (!text) {
+    return json(
+      {
+        ok: false,
+        message:
+          "Aus dieser Datei kam kein Text an. Bei gescannten Seiten oder reinen Bild-PDFs gibt es keinen auslesbaren Text — so ein PDF gehört direkt in den Chat.",
+      },
+      422,
+    );
+  }
+
+  const docs = await readJson(env, KEY.docs, []);
+  const existing = docs.findIndex((doc) => doc.title.toLowerCase() === name.toLowerCase());
+  const entry = { title: name, text, addedAt: new Date().toISOString() };
+
+  if (existing === -1) docs.push(entry);
+  else docs[existing] = entry;
+
+  await writeJson(env, KEY.docs, docs);
+  await appendLog(env, `PDF "${name}" aufgenommen (${text.length} Zeichen).`);
+
+  return json({ ok: true, dokument: name, zeichen: text.length, dokumenteGesamt: docs.length });
+}
+
 async function handleDevicePush(request, env) {
   if (!deviceAuthorized(request, env)) return json({ error: "unauthorized" }, 401);
 
@@ -965,6 +1022,11 @@ export default {
 
       case "/device/creates":
         return handleDeviceCreates(request, env);
+
+      case "/device/pdf":
+        return request.method === "POST"
+          ? handleDevicePdf(request, env)
+          : new Response("Method Not Allowed", { status: 405 });
 
       case "/device/bodies":
         return request.method === "POST"

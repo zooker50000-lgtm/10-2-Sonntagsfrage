@@ -566,3 +566,78 @@ test("Fehlendes SETUP_CODE-Secret meldet sich verständlich", async () => {
   assert.equal(response.status, 500);
   assert.match((await response.json()).message, /SETUP_CODE/);
 });
+
+test("Geteiltes PDF wird wie eine Notiz lesbar", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  const stored = await (
+    await call(env, "/device/pdf?name=Arbeitsblatt%20S%C3%A4uren.pdf", {
+      method: "POST",
+      headers: { "X-Device-Token": SETUP_CODE },
+      body: "Aufgabe 1: Bestimme den pH-Wert von Essigsäure.\nAufgabe 2: Nenne drei Indikatoren.",
+    })
+  ).json();
+
+  assert.equal(stored.ok, true);
+  assert.equal(stored.dokumenteGesamt, 1);
+
+  // Ohne Notiz-Snapshot muss das PDF trotzdem auffindbar sein.
+  const found = await tool(env, accessToken, "search_notes", { query: "Indikatoren" });
+  assert.match(found.result.content[0].text, /Arbeitsblatt Säuren\.pdf/);
+
+  const read = await tool(env, accessToken, "read_note", { title: "Arbeitsblatt" });
+  assert.match(read.result.content[0].text, /pH-Wert von Essigsäure/);
+
+  const overview = await tool(env, accessToken, "notes_overview");
+  assert.match(overview.result.content[0].text, /PDF: 1/);
+});
+
+test("Dasselbe PDF erneut geteilt ersetzt die alte Fassung", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  const send = (body) =>
+    call(env, "/device/pdf?name=Skript.pdf", {
+      method: "POST",
+      headers: { "X-Device-Token": SETUP_CODE },
+      body,
+    });
+
+  await send("alte Fassung");
+  const second = await (await send("neue Fassung")).json();
+  assert.equal(second.dokumenteGesamt, 1, "Es darf kein Duplikat entstehen");
+
+  const read = await tool(env, accessToken, "read_note", { title: "Skript" });
+  assert.match(read.result.content[0].text, /neue Fassung/);
+  assert.doesNotMatch(read.result.content[0].text, /alte Fassung/);
+});
+
+test("Ein Bild-PDF ohne Textebene wird deutlich abgewiesen", async () => {
+  const env = makeEnv();
+  const response = await call(env, "/device/pdf?name=Scan.pdf", {
+    method: "POST",
+    headers: { "X-Device-Token": SETUP_CODE },
+    body: "   ",
+  });
+
+  assert.equal(response.status, 422);
+  assert.match((await response.json()).message, /direkt in den Chat/);
+});
+
+test("PDFs überleben einen neuen Notiz-Sync", async () => {
+  const env = makeEnv();
+  const accessToken = await connect(env);
+
+  await call(env, "/device/pdf?name=Merkblatt.pdf", {
+    method: "POST",
+    headers: { "X-Device-Token": SETUP_CODE },
+    body: "Wichtig für die Klassenarbeit.",
+  });
+
+  // Der Snapshot wird bei jedem Sync komplett ersetzt — die Dokumente nicht.
+  await pushSnapshot(env);
+
+  const read = await tool(env, accessToken, "read_note", { title: "Merkblatt" });
+  assert.match(read.result.content[0].text, /Klassenarbeit/);
+});
