@@ -1,0 +1,821 @@
+<title>Notizen-Brücke fürs iPad</title>
+
+<style>
+  /* ---- Tokens: helles Papier mit leichter Amber-Neigung, Apple-nativ ---- */
+  :root {
+    --bg: #f4f2ed;
+    --surface: #fffefb;
+    --surface-2: #eeebe3;
+    --ink: #1f1c15;
+    --ink-2: #4a443a;
+    --muted: #79715f;
+    --line: #ddd8cb;
+    --line-strong: #c6bfae;
+    --accent: #b06f14;
+    --accent-ink: #8a5608;
+    --accent-soft: #f6e7cd;
+    --read: #2f6257;
+    --read-soft: #dcebe6;
+    --write: #8a4a2f;
+    --write-soft: #f6e2d8;
+
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+    --rounded: ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    --measure: 66ch;
+    --radius: 14px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16140f;
+      --surface: #201d16;
+      --surface-2: #2a261d;
+      --ink: #efe9dc;
+      --ink-2: #cdc5b4;
+      --muted: #9a917e;
+      --line: #35301f;
+      --line-strong: #4c4531;
+      --accent: #e6a444;
+      --accent-ink: #f0bb6e;
+      --accent-soft: #3a2f18;
+      --read: #7fc3b3;
+      --read-soft: #1e2f2b;
+      --write: #d99a7c;
+      --write-soft: #33221a;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #16140f;
+    --surface: #201d16;
+    --surface-2: #2a261d;
+    --ink: #efe9dc;
+    --ink-2: #cdc5b4;
+    --muted: #9a917e;
+    --line: #35301f;
+    --line-strong: #4c4531;
+    --accent: #e6a444;
+    --accent-ink: #f0bb6e;
+    --accent-soft: #3a2f18;
+    --read: #7fc3b3;
+    --read-soft: #1e2f2b;
+    --write: #d99a7c;
+    --write-soft: #33221a;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 22px 96px;
+  }
+
+  p, li { color: var(--ink-2); }
+  p { max-width: var(--measure); }
+
+  a { color: var(--accent-ink); text-underline-offset: 3px; }
+  a:focus-visible, .jump a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* ---- Kopf ---- */
+  header.hero {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 64px 0 34px;
+  }
+
+  .eyebrow {
+    font-family: var(--rounded);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(2.1rem, 6.4vw, 3.15rem);
+    line-height: 1.05;
+    letter-spacing: -0.028em;
+    font-weight: 700;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+
+  .lede {
+    font-size: 1.18rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 58ch;
+    margin: 0;
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .fact {
+    font-family: var(--rounded);
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+  }
+
+  /* ---- Sprungleiste ---- */
+  .jump {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 10px 0;
+    margin-bottom: 8px;
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+    scrollbar-width: none;
+  }
+  .jump::-webkit-scrollbar { display: none; }
+
+  .jump a {
+    flex: 0 0 auto;
+    font-family: var(--rounded);
+    font-size: 13.5px;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--ink-2);
+    padding: 6px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    white-space: nowrap;
+  }
+  .jump a:hover { border-color: var(--line-strong); color: var(--ink); }
+  .jump a .n { color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+
+  /* ---- Abschnitte ---- */
+  section { padding-top: 42px; }
+
+  h2 {
+    margin: 0 0 12px;
+    font-size: 1.45rem;
+    letter-spacing: -0.017em;
+    font-weight: 680;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  h3 {
+    margin: 26px 0 8px;
+    font-size: 1.02rem;
+    font-weight: 650;
+    color: var(--ink);
+  }
+
+  /* ---- Flussdiagramm ---- */
+  .flow {
+    display: grid;
+    gap: 12px;
+    margin: 20px 0 4px;
+  }
+
+  .flow-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 9px;
+    padding: 15px 17px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .flow-tag {
+    font-family: var(--rounded);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 6px;
+    margin-right: 3px;
+  }
+  .flow-row.read .flow-tag { background: var(--read-soft); color: var(--read); }
+  .flow-row.write .flow-tag { background: var(--write-soft); color: var(--write); }
+
+  .node {
+    font-size: 14.5px;
+    font-weight: 550;
+    color: var(--ink);
+    padding: 5px 11px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    white-space: nowrap;
+  }
+  .node.you { background: var(--accent-soft); color: var(--accent-ink); }
+
+  .arrow { color: var(--muted); font-size: 15px; }
+
+  /* ---- Kurzbefehl-Karten ---- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 22px 22px 24px;
+    margin-top: 18px;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+
+  .card-num {
+    font-family: var(--rounded);
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-name {
+    font-size: 1.2rem;
+    font-weight: 660;
+    letter-spacing: -0.012em;
+    color: var(--ink);
+    margin: 0;
+  }
+
+  .dir {
+    font-family: var(--rounded);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 6px;
+  }
+  .dir.read { background: var(--read-soft); color: var(--read); }
+  .dir.write { background: var(--write-soft); color: var(--write); }
+
+  .card > p:first-of-type { margin-top: 6px; }
+
+  /* ---- Aktionsstapel: bildet den Kurzbefehle-Editor nach ---- */
+  ol.actions {
+    list-style: none;
+    margin: 18px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 9px;
+    counter-reset: step;
+  }
+
+  ol.actions > li {
+    position: relative;
+    counter-increment: step;
+    background: var(--surface-2);
+    border-radius: 11px;
+    padding: 12px 15px 13px 46px;
+  }
+
+  ol.actions > li::before {
+    content: counter(step);
+    position: absolute;
+    left: 13px;
+    top: 12px;
+    width: 21px;
+    height: 21px;
+    border-radius: 7px;
+    background: var(--accent);
+    color: var(--surface);
+    font-family: var(--rounded);
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 21px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .act {
+    font-family: var(--mono);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .en {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  ol.actions ul {
+    margin: 7px 0 0;
+    padding-left: 17px;
+    display: grid;
+    gap: 3px;
+  }
+  ol.actions li li { font-size: 15px; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.87em;
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    padding: 1px 5px;
+    border-radius: 5px;
+  }
+
+  pre {
+    margin: 9px 0 0;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+  pre code { background: none; color: inherit; padding: 0; }
+
+  /* ---- Hinweiskasten ---- */
+  .note {
+    margin: 20px 0 0;
+    padding: 15px 17px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  .note p { margin: 0; color: var(--ink); max-width: none; }
+  .note p + p { margin-top: 7px; }
+  .note .label {
+    display: block;
+    font-family: var(--rounded);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    margin-bottom: 5px;
+  }
+
+  /* ---- Listen ---- */
+  ul.plain {
+    margin: 12px 0 0;
+    padding-left: 19px;
+    display: grid;
+    gap: 8px;
+    max-width: var(--measure);
+  }
+  ul.plain strong { color: var(--ink); font-weight: 620; }
+
+  hr {
+    border: 0;
+    border-top: 1px solid var(--line);
+    margin: 44px 0 0;
+  }
+
+  footer {
+    padding-top: 34px;
+    color: var(--muted);
+    font-size: 14.5px;
+  }
+  footer p { color: var(--muted); }
+
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 16px 72px; }
+    header.hero { padding-top: 40px; }
+    .card { padding: 18px 16px 20px; border-radius: 15px; }
+    ol.actions > li { padding-left: 42px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+
+  html { scroll-behavior: smooth; }
+</style>
+
+<div class="wrap">
+
+  <header class="hero">
+    <span class="eyebrow">Apple Notes · Kurzbefehle · iPadOS</span>
+    <h1>Notizen-Brücke fürs iPad</h1>
+    <p class="lede">
+      Fünf Kurzbefehle, die Claude und Apple Notes verbinden — über die Zwischenablage,
+      ohne Server, ohne Mac, ohne laufende Kosten.
+    </p>
+    <div class="facts">
+      <span class="fact">≈ 20 Min Einrichtung</span>
+      <span class="fact">Keine App-Installation</span>
+      <span class="fact">Nichts verlässt dein iPad</span>
+    </div>
+  </header>
+
+  <nav class="jump" aria-label="Zu den Kurzbefehlen springen">
+    <a href="#prinzip">Prinzip</a>
+    <a href="#vorbereitung">Vorbereitung</a>
+    <a href="#k1"><span class="n">1</span> Notiz an Claude</a>
+    <a href="#k2"><span class="n">2</span> Index</a>
+    <a href="#k3"><span class="n">3</span> Suche</a>
+    <a href="#k4"><span class="n">4</span> Neue Notiz</a>
+    <a href="#k5"><span class="n">5</span> Anhängen</a>
+    <a href="#zugriff">Zugriff</a>
+    <a href="#grenzen">Grenzen</a>
+  </nav>
+
+  <section id="prinzip">
+    <h2>Das Prinzip</h2>
+    <p>
+      iPadOS kennt kein AppleScript und lässt keinen Hintergrundprozess auf eine fremde App zugreifen.
+      Die Kurzbefehle-App ist damit die einzige Schnittstelle zu Apple Notes — sie kann dafür fast
+      alles, was ein Mac-Skript auch könnte.
+    </p>
+    <p>
+      Claude wiederum ruft Connectors aus Anthropics Cloud auf, nicht von deinem Gerät. Dein iPad
+      wäre für einen Connector also gar nicht erreichbar. Deshalb übernimmt die Zwischenablage den
+      Transport — und du gibst den Startschuss.
+    </p>
+
+    <div class="flow">
+      <div class="flow-row read">
+        <span class="flow-tag">Lesen</span>
+        <span class="node">Apple Notes</span>
+        <span class="arrow">→</span>
+        <span class="node">Kurzbefehl</span>
+        <span class="arrow">→</span>
+        <span class="node you">Zwischenablage</span>
+        <span class="arrow">→</span>
+        <span class="node">Claude</span>
+      </div>
+      <div class="flow-row write">
+        <span class="flow-tag">Schreiben</span>
+        <span class="node">Claude</span>
+        <span class="arrow">→</span>
+        <span class="node you">Kopieren</span>
+        <span class="arrow">→</span>
+        <span class="node">Kurzbefehl</span>
+        <span class="arrow">→</span>
+        <span class="node">Apple Notes</span>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="label">Zu den Aktionsnamen</span>
+      <p>
+        Die deutsche Kurzbefehle-App übersetzt Aktionsnamen, und die Bezeichnungen ändern sich
+        zwischen iPadOS-Versionen gelegentlich. Unten steht darum jeweils <strong>deutsch</strong>
+        und <em>englisch</em> — mit dem englischen Namen findest du die Aktion notfalls über die
+        Suche im Aktionen-Katalog.
+      </p>
+    </div>
+  </section>
+
+  <section id="vorbereitung">
+    <h2>Vorbereitung</h2>
+    <p>
+      Lege in Apple Notes einen Ordner <strong>„Claude"</strong> an. Er dient als Eingang für alles,
+      was Claude schreibt — so landet nichts versehentlich zwischen deinen eigenen Notizen.
+    </p>
+    <p>
+      Öffne dann die Kurzbefehle-App und tippe für jeden der fünf Kurzbefehle oben rechts auf
+      <strong>+</strong>.
+    </p>
+  </section>
+
+  <hr>
+
+  <section id="k1">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-num">1</span>
+        <h2 class="card-name">Notiz an Claude</h2>
+        <span class="dir read">Lesen</span>
+      </div>
+      <p>Wählt eine Notiz aus einer Liste und legt ihren Inhalt in die Zwischenablage.</p>
+
+      <ol class="actions">
+        <li>
+          <span class="act">Notizen suchen</span> <span class="en">Find Notes</span>
+          <ul>
+            <li>Sortieren nach <strong>Zuletzt geändert</strong>, absteigend</li>
+            <li>Limit <strong>25</strong></li>
+            <li>Kein Filter — so erscheinen alle Notizen, zuletzt bearbeitete zuerst</li>
+          </ul>
+        </li>
+        <li>
+          <span class="act">Aus Liste auswählen</span> <span class="en">Choose from List</span>
+          <ul>
+            <li>Eingabe: Ergebnis aus Schritt 1</li>
+            <li>Titel: <code>Welche Notiz?</code></li>
+          </ul>
+        </li>
+        <li>
+          <span class="act">Text</span> <span class="en">Text</span>
+          <pre><code>Notiz: ⟨Name⟩
+Ordner: ⟨Ordner⟩
+Geändert: ⟨Zuletzt geändert⟩
+
+⟨Text⟩</code></pre>
+        </li>
+        <li>
+          <span class="act">In die Zwischenablage kopieren</span> <span class="en">Copy to Clipboard</span>
+        </li>
+        <li>
+          <span class="act">Mitteilung anzeigen</span> <span class="en">Show Notification</span>
+          <ul><li><code>Kopiert – in Claude einfügen</code></li></ul>
+        </li>
+      </ol>
+
+      <div class="note">
+        <span class="label">Magic Variables einsetzen</span>
+        <p>
+          Die Werte in ⟨spitzen Klammern⟩ tippst du nicht ab. Tippe im Text-Feld auf die
+          Variablenleiste über der Tastatur und wähle das Ergebnis von <em>Aus Liste auswählen</em>.
+        </p>
+        <p>
+          Tippe die eingefügte Variable danach <strong>erneut an</strong> — dann lässt sich die
+          Eigenschaft umstellen auf <em>Name</em>, <em>Text</em>, <em>Ordner</em> oder
+          <em>Zuletzt geändert</em>. So werden aus einer Notiz-Variable die vier Felder oben.
+        </p>
+      </div>
+
+      <h3>Nutzung</h3>
+      <p>Kurzbefehl starten → Notiz wählen → zu Claude wechseln → einfügen.</p>
+    </div>
+  </section>
+
+  <section id="k2">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-num">2</span>
+        <h2 class="card-name">Notiz-Index an Claude</h2>
+        <span class="dir read">Lesen</span>
+      </div>
+      <p>
+        Gibt Claude den Überblick über deine Ordnerstruktur und alle Notiztitel — ohne die
+        kompletten Inhalte. Claude kann dann gezielt sagen, welche Notiz es braucht.
+      </p>
+
+      <ol class="actions">
+        <li>
+          <span class="act">Notizen suchen</span> <span class="en">Find Notes</span>
+          <ul>
+            <li>Sortieren nach <strong>Zuletzt geändert</strong>, absteigend</li>
+            <li>Limit <strong>200</strong> — bei sehr vielen Notizen niedriger ansetzen</li>
+          </ul>
+        </li>
+        <li>
+          <span class="act">Variable festlegen</span> <span class="en">Set Variable</span>
+          <ul><li>Name <code>Index</code>, Wert leer lassen</li></ul>
+        </li>
+        <li>
+          <span class="act">Mit jedem Objekt wiederholen</span> <span class="en">Repeat with Each</span>
+          <ul>
+            <li>Eingabe: Ergebnis aus Schritt 1</li>
+            <li>
+              darin <strong>Zu Variable hinzufügen</strong> → <code>Index</code>, Wert ist eine
+              <strong>Text</strong>-Aktion:
+              <pre><code>⟨Ordner⟩ | ⟨Name⟩</code></pre>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <span class="act">Text kombinieren</span> <span class="en">Combine Text</span>
+          <ul><li>Eingabe <code>Index</code>, Trennzeichen <strong>Neue Zeile</strong></li></ul>
+        </li>
+        <li>
+          <span class="act">In die Zwischenablage kopieren</span> <span class="en">Copy to Clipboard</span>
+        </li>
+      </ol>
+
+      <h3>Was bei Claude ankommt</h3>
+      <pre><code>Projekte | Sonntagsfrage Auswertung
+Projekte | Fragebogen Entwurf
+Privat | Einkaufsliste</code></pre>
+
+      <p>
+        Diese Umwegkonstruktion hat einen Grund: Kurzbefehle hat <strong>keine Aktion, die Ordner
+        direkt auflistet</strong>. Der Ordnername ist aber eine Eigenschaft jeder Notiz — also
+        leitet man die Struktur aus den Notizen ab.
+      </p>
+    </div>
+  </section>
+
+  <section id="k3">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-num">3</span>
+        <h2 class="card-name">Notizsuche an Claude</h2>
+        <span class="dir read">Lesen</span>
+      </div>
+      <p>Volltextsuche über alle Notizen; die Treffer landen gesammelt in der Zwischenablage.</p>
+
+      <ol class="actions">
+        <li>
+          <span class="act">Nach Eingabe fragen</span> <span class="en">Ask for Input</span>
+          <ul><li>Typ <strong>Text</strong>, Frage <code>Wonach suchen?</code></li></ul>
+        </li>
+        <li>
+          <span class="act">Notizen suchen</span> <span class="en">Find Notes</span>
+          <ul>
+            <li>Filter <strong>Text enthält</strong> <span class="en">Body contains</span> → Wert ist die Eingabe aus Schritt 1</li>
+            <li>Limit <strong>10</strong></li>
+          </ul>
+        </li>
+        <li>
+          <span class="act">Variable festlegen</span> <span class="en">Set Variable</span>
+          <ul><li>Name <code>Treffer</code>, leer</li></ul>
+        </li>
+        <li>
+          <span class="act">Mit jedem Objekt wiederholen</span> <span class="en">Repeat with Each</span>
+          <ul>
+            <li>
+              darin <strong>Zu Variable hinzufügen</strong> → <code>Treffer</code>:
+              <pre><code>### ⟨Name⟩ (⟨Ordner⟩)
+⟨Text⟩</code></pre>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <span class="act">Text kombinieren</span> <span class="en">Combine Text</span>
+          <ul><li>Trennzeichen <strong>Neue Zeile</strong></li></ul>
+        </li>
+        <li>
+          <span class="act">In die Zwischenablage kopieren</span> <span class="en">Copy to Clipboard</span>
+        </li>
+      </ol>
+
+      <div class="note">
+        <span class="label">Falls der Filter die Eingabe nicht annimmt</span>
+        <p>
+          Auf das Filterfeld tippen und die Variable aus der Leiste über der Tastatur wählen.
+          Filter<em>werte</em> akzeptieren Variablen — die Ordner-Auswahl dagegen nicht, die bleibt
+          eine feste Auswahl.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="k4">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-num">4</span>
+        <h2 class="card-name">Claude → neue Notiz</h2>
+        <span class="dir write">Schreiben</span>
+      </div>
+      <p>Nimmt den in Claude kopierten Text und legt daraus eine neue Notiz an.</p>
+
+      <ol class="actions">
+        <li>
+          <span class="act">Zwischenablage abrufen</span> <span class="en">Get Clipboard</span>
+        </li>
+        <li>
+          <span class="act">Notiz erstellen</span> <span class="en">Create Note</span>
+          <ul>
+            <li>Inhalt: Ergebnis aus Schritt 1</li>
+            <li><strong>Ordner: Claude</strong> — das Feld antippen und den Ordner wählen</li>
+          </ul>
+        </li>
+        <li>
+          <span class="act">Notiz anzeigen</span> <span class="en">Show Note</span>
+          <ul><li>Eingabe: die erstellte Notiz</li></ul>
+        </li>
+      </ol>
+
+      <div class="note">
+        <span class="label">Zwei Eigenheiten von Apple Notes</span>
+        <p>
+          <strong>Der Titel entsteht aus der ersten Zeile</strong> des Inhalts. Bitte Claude also,
+          mit einer sauberen Titelzeile zu beginnen — sonst heißt die Notiz wie der erste Halbsatz.
+        </p>
+        <p>
+          <strong>Markdown wird nicht gerendert:</strong> <code>**fett**</code> bleibt als Sternchen
+          stehen. Sag Claude für diesen Weg am besten „ohne Markdown, nur Klartext mit
+          Bindestrich-Listen".
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="k5">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-num">5</span>
+        <h2 class="card-name">Claude → an Notiz anhängen</h2>
+        <span class="dir write">Ändern</span>
+      </div>
+      <p>Hängt den kopierten Text unten an eine bestehende Notiz an.</p>
+
+      <ol class="actions">
+        <li>
+          <span class="act">Zwischenablage abrufen</span> <span class="en">Get Clipboard</span>
+        </li>
+        <li>
+          <span class="act">Notizen suchen</span> <span class="en">Find Notes</span>
+          <ul><li>Sortieren nach <strong>Zuletzt geändert</strong>, Limit <strong>25</strong></li></ul>
+        </li>
+        <li>
+          <span class="act">Aus Liste auswählen</span> <span class="en">Choose from List</span>
+          <ul><li>Titel <code>An welche Notiz anhängen?</code></li></ul>
+        </li>
+        <li>
+          <span class="act">An Notiz anhängen</span> <span class="en">Append to Note</span>
+          <ul>
+            <li><strong>Notiz:</strong> Ergebnis aus Schritt 3 (Magic Variable)</li>
+            <li><strong>Text:</strong> Ergebnis aus Schritt 1</li>
+          </ul>
+        </li>
+        <li>
+          <span class="act">Mitteilung anzeigen</span> <span class="en">Show Notification</span>
+          <ul><li><code>Angehängt</code></li></ul>
+        </li>
+      </ol>
+
+      <div class="note">
+        <span class="label">Warum erst suchen, dann anhängen</span>
+        <p>
+          <em>An Notiz anhängen</em> erwartet eine <strong>Notiz-Referenz</strong>, keinen Titel als
+          Text. Ohne vorheriges <em>Notizen suchen</em> findet die Aktion ihr Ziel nicht — das ist
+          die häufigste Stolperstelle bei diesem Kurzbefehl.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <section id="zugriff">
+    <h2>Schneller Zugriff auf dem iPad</h2>
+    <p>Damit die Kurzbefehle im Alltag nicht stören, lohnt sich mindestens eine dieser Optionen:</p>
+    <ul class="plain">
+      <li><strong>Home-Bildschirm:</strong> im Kurzbefehl auf ⓘ → <em>Zum Home-Bildschirm hinzufügen</em></li>
+      <li><strong>Kontrollzentrum:</strong> Einstellungen → Kontrollzentrum → <em>Kurzbefehle</em> hinzufügen</li>
+      <li><strong>Tastaturkürzel</strong> (mit Magic Keyboard): in der Kurzbefehle-App auf ⓘ → <em>Tastaturkurzbefehl</em> — der schnellste Weg, wenn Claude im Split View liegt</li>
+      <li><strong>Split View:</strong> Claude links, Kurzbefehle rechts — dann sind Kopieren und Einfügen ein Fingertipp ohne App-Wechsel</li>
+    </ul>
+  </section>
+
+  <section id="grenzen">
+    <h2>Was dieser Weg nicht kann</h2>
+    <p>Ehrlich vorab, damit dich später nichts überrascht:</p>
+    <ul class="plain">
+      <li><strong>Claude arbeitet nicht von allein.</strong> Jeder Austausch braucht deinen Tipp. Automatisches Lesen im Hintergrund ist auf iPadOS ohne gehosteten Relay nicht möglich.</li>
+      <li><strong>Kein Ersetzen von Inhalten.</strong> Kurzbefehle kann anhängen und erstellen, aber den Text einer bestehenden Notiz nicht überschreiben. Workaround: neue Notiz anlegen, alte löschen.</li>
+      <li><strong>Kein Markdown-Rendering</strong> in Apple Notes über diesen Weg.</li>
+      <li><strong>Passwortgeschützte Notizen</strong> liefern über <em>Notizen suchen</em> keinen Inhalt.</li>
+      <li><strong>Lange Notizen</strong> können Zwischenablage und Kontextfenster sprengen — dafür ist Kurzbefehl 2 gedacht: erst die Struktur zeigen, dann gezielt eine Notiz holen.</li>
+    </ul>
+  </section>
+
+  <section id="spaeter">
+    <h2>Wenn du später mehr willst</h2>
+    <p>
+      Sobald ein Mac dazukommt, ist der MCP-Server im Repository der bequemere Weg: Claude liest und
+      schreibt dann ohne dein Zutun, und die Kurzbefehle können daneben bestehen bleiben.
+    </p>
+    <p>
+      Der Mittelweg ohne Mac wäre ein gehosteter Relay-Server plus ein Kurzbefehl, der regelmäßig
+      Aufträge abholt. Das kostet Einrichtung und ein Hosting-Konto — sag Bescheid, wenn es so weit
+      ist.
+    </p>
+  </section>
+
+  <footer>
+    <p>Repository: <code>zooker50000-lgtm/10-2-Sonntagsfrage</code> · Branch <code>claude/apple-notes-connector-7t7e3e</code> · Textfassung unter <code>docs/ipad-shortcuts.md</code></p>
+  </footer>
+
+</div>

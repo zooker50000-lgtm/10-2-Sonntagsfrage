@@ -1,0 +1,25 @@
+{
+  // Deploy-Konfiguration für den Notizen-Relay.
+  //
+  // Sie erlaubt zwei Wege, die beide ohne Kommandozeile auskommen:
+  //   1. "Deploy to Cloudflare" direkt aus diesem Repository — Cloudflare liest
+  //      diese Datei und legt den KV-Namespace selbst an.
+  //   2. Von Hand im Dashboard; dann dient sie als Vorlage dafür, wie die
+  //      Bindung heißen muss.
+  //
+  // Der Name der Bindung muss NOTES lauten — der Worker sucht danach.
+  // Das Secret SETUP_CODE steht bewusst nicht hier: Secrets gehören nicht in
+  // ein öffentliches Repository, es wird im Dashboard gesetzt.
+  "name": "notizen-relay",
+  "main": "relay/worker.js",
+  "compatibility_date": "2026-08-01",
+  "observability": {
+    "enabled": true
+  },
+  "kv_namespaces": [
+    {
+      "binding": "NOTES",
+      "id": ""
+    }
+  ]
+}
